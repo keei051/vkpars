@@ -29,7 +29,7 @@ async def main():
     # Инициализация бота
     bot_manager = BotManager([BOT_TOKEN])
     dp = Dispatcher()
-    dp.include_router(router)
+    dp.include_router(router)  # Регистрация router
     dp.message.middleware(RateLimitMiddleware())
     dp.message.middleware(ErrorMiddleware(bot_manager))
     
