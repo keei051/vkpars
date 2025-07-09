@@ -1,12 +1,13 @@
-# database.py
 import sqlite3
 import pandas as pd
 import logging
 from pathlib import Path
 
+DB_PATH = 'vk_groups.db'  # Можно переиспользовать везде
+
 def init_db():
     """Инициализация SQLite базы."""
-    conn = sqlite3.connect('vk_groups.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
     cursor.execute('''
@@ -75,6 +76,13 @@ def get_groups(city: str) -> pd.DataFrame:
         AND (error IS NULL OR error != 'да')
     """
     df = pd.read_sql_query(query, conn, params=[f'%{city}%'])
+    conn.close()
+    return df
+
+def get_all_groups() -> pd.DataFrame:
+    """Получение всех групп без фильтрации."""
+    conn = init_db()
+    df = pd.read_sql_query("SELECT * FROM groups", conn)
     conn.close()
     return df
 
