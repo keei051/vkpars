@@ -3,4 +3,4 @@ pandas==2.2.3
 redis==5.1.1
 python-dotenv==1.0.1
 requests==2.32.3
-pymorphy2==0.9.7  # Для лемматизации русского текста
+pymorphy2==0.9.1  
