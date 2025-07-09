@@ -18,23 +18,19 @@ logging.basicConfig(
 )
 
 async def main():
-    # Инициализация БД
     init_db()
     if os.path.exists('groups.csv'):
         load_groups_from_csv('groups.csv')
-        logging.info("Данные из groups.csv загружены в SQLite")
+        logging.info("Загружены данные из CSV")
     else:
-        logging.warning("groups.csv не найден, запуск без него")
+        logging.warning("groups.csv не найден")
 
-    # Запуск бота
     bot_manager = BotManager([BOT_TOKEN])
     bot = bot_manager.get_current_bot()
-
     if not bot:
-        logging.critical("BotManager не вернул объект Bot — проверь токен или реализацию")
+        logging.critical("BotManager не вернул бота")
         return
 
-    # Установка команд
     await bot.set_my_commands([
         BotCommand(command="start", description="Запустить бота"),
         BotCommand(command="add_ban", description="Добавить стоп-слово"),
@@ -46,12 +42,10 @@ async def main():
 
     dp = Dispatcher()
     dp.include_router(router)
-
-    # Middleware (временно можно отключить при отладке)
     dp.message.middleware(RateLimitMiddleware())
     dp.message.middleware(ErrorMiddleware(bot_manager))
 
-    logging.info("Бот запущен и ожидает команды")
+    logging.info("Бот запущен")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
