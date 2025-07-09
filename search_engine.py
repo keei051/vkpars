@@ -1,8 +1,7 @@
 import pandas as pd
 import logging
-from database import get_groups, get_banlist
+from database import get_groups, get_all_groups, get_banlist
 from cache import cache
-from datetime import datetime
 import pymorphy2  # Для лемматизации
 
 # Инициализация морфологического анализатора
@@ -11,18 +10,16 @@ morph = pymorphy2.MorphAnalyzer()
 async def search_groups(city: str) -> pd.DataFrame:
     """Поиск и фильтрация групп по нормализованному названию города."""
     normalized_city = morph.parse(city)[0].normal_form
-
     cache_key = f"search:{normalized_city.lower()}"
+
     cached = cache.get(cache_key)
     if cached:
         logging.info(f"Данные для '{normalized_city}' из кэша")
         return pd.read_json(cached['dataframe'], orient='records')
 
-    # Основной поиск
     df = get_groups(normalized_city)
     if df.empty:
         logging.info(f"Группы для '{normalized_city}' не найдены")
-        # Поиск по вариациям
         df = get_groups_with_variations(normalized_city)
 
     if df.empty:
@@ -39,7 +36,7 @@ async def search_groups(city: str) -> pd.DataFrame:
 
 def get_groups_with_variations(city: str) -> pd.DataFrame:
     """Поиск групп, содержащих вариации названия города."""
-    df = get_groups("")  # Получаем все группы (если get_groups поддерживает)
+    df = get_all_groups()
     if df.empty:
         return df
 
