@@ -1,6 +1,6 @@
 # handlers.py
 from aiogram import Router, types
-from aiogram.filters import Command, RegexpCommandsFilter
+from aiogram.filters import Command, Text
 from bot_manager import BotManager
 from search_engine import search_groups
 from report_generator import generate_report
@@ -9,6 +9,7 @@ from config import ADMIN_ID, VK_TOKEN
 import logging
 import os
 import requests
+import re
 
 router = Router()
 
@@ -19,19 +20,24 @@ async def start_command(message: types.Message):
                         "Используйте: поиск(Город), например, поиск(Ижевск)")
     logging.info(f"Команда /start от {message.from_user.id}")
 
-@router.message(RegexpCommandsFilter(regexp_commands=['поиск\(([А-Яа-яA-Za-z0-9]+)\)']))
-async def search_command(message: types.Message, regexp_command):
+@router.message(Text(startswith="поиск("))
+async def search_command(message: types.Message):
     """Поиск групп."""
-    city = regexp_command.group(1)
+    match = re.fullmatch(r"поиск\(([\w\sА-Яа-яёЁ\-]+)\)", message.text.strip())
+    if not match:
+        await message.answer("❗ Некорректный формат. Используйте: поиск(Город)")
+        return
+
+    city = match.group(1).strip()
+
     bot = BotManager([os.getenv('BOT_TOKEN')]).get_current_bot()
-    
     await bot.send_message(message.chat.id, f"⏳ Начинаю поиск по слову '{city}'...")
     logging.info(f"Поиск: '{city}' от {message.from_user.id}")
 
     try:
         df = await search_groups(city)
         if df.empty:
-            await bot.send_message(message.chat.id, 
+            await bot.send_message(message.chat.id,
                                  f"❌ Ничего не найдено по запросу '{city}'.\n"
                                  "Попробуйте другое слово или проверьте орфографию.")
             return
@@ -51,7 +57,7 @@ async def search_command(message: types.Message, regexp_command):
 @router.message(Command(commands=['add_ban']))
 async def add_ban_command(message: types.Message):
     """Добавление стоп-слова."""
-    if str(message.from_user.id) != ADMIN_ID:
+    if message.from_user.id != int(ADMIN_ID):  # Сравнение как int
         await message.answer("❌ Доступ запрещён.")
         return
     word = message.text.split(maxsplit=1)[1] if len(message.text.split()) > 1 else None
@@ -64,7 +70,7 @@ async def add_ban_command(message: types.Message):
 @router.message(Command(commands=['remove_ban']))
 async def remove_ban_command(message: types.Message):
     """Удаление стоп-слова."""
-    if str(message.from_user.id) != ADMIN_ID:
+    if message.from_user.id != int(ADMIN_ID):  # Сравнение как int
         await message.answer("❌ Доступ запрещён.")
         return
     word = message.text.split(maxsplit=1)[1] if len(message.text.split()) > 1 else None
@@ -77,7 +83,7 @@ async def remove_ban_command(message: types.Message):
 @router.message(Command(commands=['list_ban']))
 async def list_ban_command(message: types.Message):
     """Список стоп-слов."""
-    if str(message.from_user.id) != ADMIN_ID:
+    if message.from_user.id != int(ADMIN_ID):  # Сравнение как int
         await message.answer("❌ Доступ запрещён.")
         return
     banlist = get_banlist()
@@ -89,7 +95,7 @@ async def list_ban_command(message: types.Message):
 @router.message(Command(commands=['stats']))
 async def stats_command(message: types.Message):
     """Статистика (заглушка)."""
-    if str(message.from_user.id) != ADMIN_ID:
+    if message.from_user.id != int(ADMIN_ID):  # Сравнение как int
         await message.answer("❌ Доступ запрещён.")
         return
     await message.answer("📊 Статистика (заглушка):\n- Запросов: 0\n- Уникальных городов: 0")
@@ -97,7 +103,7 @@ async def stats_command(message: types.Message):
 @router.message(Command(commands=['update_data']))
 async def update_data_command(message: types.Message):
     """Обновление групп через VK API."""
-    if str(message.from_user.id) != ADMIN_ID:
+    if message.from_user.id != int(ADMIN_ID):  # Сравнение как int
         await message.answer("❌ Доступ запрещён.")
         return
     bot = BotManager([os.getenv('BOT_TOKEN')]).get_current_bot()
@@ -106,12 +112,11 @@ async def update_data_command(message: types.Message):
     logging.info(f"Обновление данных от {message.from_user.id}")
 
     try:
-        # Поиск групп через VK API
         url = "https://api.vk.com/method/groups.search"
         params = {
             "access_token": VK_TOKEN,
             "q": "",  # Можно указать город, например, "Ижевск"
-            "count": 1000,  # Максимум 1000 групп
+            "count": 1000,
             "v": "5.131"
         }
         response = requests.get(url, params=params)
@@ -128,9 +133,9 @@ async def update_data_command(message: types.Message):
                 "link": f"https://vk.com/club{group['id']}",
                 "name": group.get("name", ""),
                 "members_count": group.get("members_count", 0),
-                "views_count": 0,  # Требуется парсинг постов
-                "er": 0.0,  # Требуется расчёт
-                "geo": "",  # Требуется отдельный запрос
+                "views_count": 0,
+                "er": 0.0,
+                "geo": "",
                 "activity": "Живая" if group.get("is_closed", 0) == 0 else "Закрытая",
                 "error": ""
             })
