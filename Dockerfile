@@ -1,19 +1,9 @@
-# Dockerfile
-FROM python:3.12-slim
+FROM python:3.10-slim
 
 WORKDIR /app
-
-# Установка зависимостей
 COPY requirements.txt .
+
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копирование кода
 COPY . .
-
-# Настройка переменных окружения
-ENV REDIS_HOST=redis
-ENV REDIS_PORT=6379
-ENV REDIS_DB=0
-
-# Запуск бота
 CMD ["python", "main.py"]
